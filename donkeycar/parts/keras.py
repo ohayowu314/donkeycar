@@ -29,11 +29,11 @@ from tensorflow.keras.layers import Convolution2D, MaxPooling2D, \
     BatchNormalization
 from tensorflow.keras.layers import Activation, Dropout, Flatten
 from tensorflow.keras.layers import LSTM
-from tensorflow.keras.layers import TimeDistributed as TD
+from tensorflow.keras.layers import TimeDistributed as TD  # TimeDistributed
 from tensorflow.keras.layers import Conv3D, MaxPooling3D, Conv2DTranspose
 from tensorflow.keras.backend import concatenate
 from tensorflow.keras.models import Model
-from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.python.keras.callbacks import EarlyStopping, ModelCheckpoint  # EarlyStopping
 
 ONE_BYTE_SCALE = 1.0 / 255.0
 
@@ -49,6 +49,7 @@ class KerasPilot(ABC):
     Base class for Keras models that will provide steering and throttle to
     guide a car.
     """
+
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3)) -> None:
@@ -181,7 +182,7 @@ class KerasPilot(ABC):
             verbose=verbose,
             workers=1,
             use_multiprocessing=False)
-            
+
         if show_plot:
             try:
                 import matplotlib.pyplot as plt
@@ -215,7 +216,7 @@ class KerasPilot(ABC):
 
             except Exception as ex:
                 print(f"problems with loss graph: {ex}")
-            
+
         return history.history
 
     def x_transform(
@@ -267,6 +268,7 @@ class KerasCategorical(KerasPilot):
     want to enable a higher throttle range. And cars with larger steering
     throw may want more bins.
     """
+
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
@@ -299,7 +301,8 @@ class KerasCategorical(KerasPilot):
         angle: float = record.underlying['user/angle']
         throttle: float = record.underlying['user/throttle']
         angle = linear_bin(angle, N=15, offset=1, R=2.0)
-        throttle = linear_bin(throttle, N=20, offset=0.0, R=self.throttle_range)
+        throttle = linear_bin(throttle, N=20, offset=0.0,
+                              R=self.throttle_range)
         return {'angle_out': angle, 'throttle_out': throttle}
 
     def output_shapes(self):
@@ -317,6 +320,7 @@ class KerasLinear(KerasPilot):
     the Keras Dense layer with linear activation. One each for steering and
     throttle. The output is not bounded.
     """
+
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
@@ -357,6 +361,7 @@ class KerasMemory(KerasLinear):
     steering and throttle commands as input in order to produce smoother
     steering outputs
     """
+
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
@@ -525,6 +530,7 @@ class KerasBehavioral(KerasCategorical):
     A Keras part that take an image and Behavior vector as input,
     outputs steering and throttle
     """
+
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
@@ -564,6 +570,7 @@ class KerasLocalizer(KerasPilot):
     A Keras part that take an image as input,
     outputs steering and throttle, and localisation category
     """
+
     def __init__(self,
                  interpreter: Interpreter = KerasInterpreter(),
                  input_shape: Tuple[int, ...] = (120, 160, 3),
@@ -578,7 +585,7 @@ class KerasLocalizer(KerasPilot):
     def compile(self):
         self.interpreter.compile(optimizer=self.optimizer, metrics=['acc'],
                                  loss='mse')
-        
+
     def interpreter_to_output(self, interpreter_out) \
             -> Tuple[Union[float, np.ndarray], ...]:
         angle, throttle, track_loc = interpreter_out
@@ -630,10 +637,10 @@ class KerasLSTM(KerasPilot):
         self.interpreter.compile(optimizer=self.optimizer, loss='mse')
 
     def x_transform(
-            self,
-            records: Union[TubRecord, List[TubRecord]],
-            img_processor: Callable[[np.ndarray], np.ndarray]) \
-        -> Dict[str, Union[float, np.ndarray]]:
+        self,
+        records: Union[TubRecord, List[TubRecord]],
+        img_processor: Callable[[np.ndarray], np.ndarray]) \
+            -> Dict[str, Union[float, np.ndarray]]:
         """ Transforms the record sequence into x for training the model to
             x, y. """
         assert isinstance(records, list), 'List[TubRecord] expected'
@@ -855,7 +862,8 @@ def default_memory(input_shape=(120, 160, 3), mem_length=3, mem_depth=0):
         y = Dense(4 * mem_length, activation='relu', name=f'mem_{i}')(y)
         y = Dropout(drop2)(y)
     for i in range(1, mem_length):
-        y = Dense(2 * (mem_length - i), activation='relu', name=f'mem_c_{i}')(y)
+        y = Dense(2 * (mem_length - i),
+                  activation='relu', name=f'mem_c_{i}')(y)
         y = Dropout(drop2)(y)
     x = concatenate([x, y])
     x = Dense(100, activation='relu', name='dense_1')(x)
@@ -895,12 +903,12 @@ def default_imu(num_outputs, num_imu_inputs, input_shape):
     x = core_cnn_layers(img_in, drop)
     x = Dense(100, activation='relu')(x)
     x = Dropout(.1)(x)
-    
+
     y = imu_in
     y = Dense(14, activation='relu')(y)
     y = Dense(14, activation='relu')(y)
     y = Dense(14, activation='relu')(y)
-    
+
     z = concatenate([x, y])
     z = Dense(50, activation='relu')(z)
     z = Dropout(.1)(z)
@@ -910,7 +918,7 @@ def default_imu(num_outputs, num_imu_inputs, input_shape):
     outputs = []
     for i in range(num_outputs):
         outputs.append(Dense(1, activation='linear', name='out_' + str(i))(z))
-        
+
     model = Model(inputs=[img_in, imu_in], outputs=outputs, name='imu')
     return model
 
@@ -925,23 +933,23 @@ def default_bhv(num_bvh_inputs, input_shape):
     x = core_cnn_layers(img_in, drop)
     x = Dense(100, activation='relu')(x)
     x = Dropout(.1)(x)
-    
+
     y = bvh_in
     y = Dense(num_bvh_inputs * 2, activation='relu')(y)
     y = Dense(num_bvh_inputs * 2, activation='relu')(y)
     y = Dense(num_bvh_inputs * 2, activation='relu')(y)
-    
+
     z = concatenate([x, y])
     z = Dense(100, activation='relu')(z)
     z = Dropout(.1)(z)
     z = Dense(50, activation='relu')(z)
     z = Dropout(.1)(z)
-    
+
     # Categorical output of the angle into 15 bins
     angle_out = Dense(15, activation='softmax', name='angle_out')(z)
     # Categorical output of throttle into 20 bins
     throttle_out = Dense(20, activation='softmax', name='throttle_out')(z)
-        
+
     model = Model(inputs=[img_in, bvh_in], outputs=[angle_out, throttle_out],
                   name='behavioral')
     return model
@@ -954,7 +962,7 @@ def default_loc(num_locations, input_shape):
     x = core_cnn_layers(img_in, drop)
     x = Dense(100, activation='relu')(x)
     x = Dropout(drop)(x)
-    
+
     z = Dense(50, activation='relu')(x)
     z = Dropout(drop)(z)
 
@@ -1022,32 +1030,32 @@ def build_3d_cnn(input_shape, s, num_outputs):
     x = img_in
     # Second layer
     x = Conv3D(
-            filters=16, kernel_size=(3, 3, 3), strides=(1, 3, 3),
-            data_format='channels_last', padding='same', activation='relu')(x)
+        filters=16, kernel_size=(3, 3, 3), strides=(1, 3, 3),
+        data_format='channels_last', padding='same', activation='relu')(x)
     x = MaxPooling3D(
-            pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid',
-            data_format=None)(x)
+        pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid',
+        data_format=None)(x)
     # Third layer
     x = Conv3D(
-            filters=32, kernel_size=(3, 3, 3), strides=(1, 1, 1),
-            data_format='channels_last', padding='same', activation='relu')(x)
+        filters=32, kernel_size=(3, 3, 3), strides=(1, 1, 1),
+        data_format='channels_last', padding='same', activation='relu')(x)
     x = MaxPooling3D(
         pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid',
         data_format=None)(x)
     # Fourth layer
     x = Conv3D(
-            filters=64, kernel_size=(3, 3, 3), strides=(1, 1, 1),
-            data_format='channels_last', padding='same', activation='relu')(x)
+        filters=64, kernel_size=(3, 3, 3), strides=(1, 1, 1),
+        data_format='channels_last', padding='same', activation='relu')(x)
     x = MaxPooling3D(
-            pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid',
-            data_format=None)(x)
+        pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid',
+        data_format=None)(x)
     # Fifth layer
     x = Conv3D(
-            filters=128, kernel_size=(3, 3, 3), strides=(1, 1, 1),
-            data_format='channels_last', padding='same', activation='relu')(x)
+        filters=128, kernel_size=(3, 3, 3), strides=(1, 1, 1),
+        data_format='channels_last', padding='same', activation='relu')(x)
     x = MaxPooling3D(
-            pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid',
-            data_format=None)(x)
+        pool_size=(1, 2, 2), strides=(1, 2, 2), padding='valid',
+        data_format=None)(x)
     # Fully connected layer
     x = Flatten()(x)
 
@@ -1088,7 +1096,7 @@ def default_latent(num_outputs, input_shape):
     x = Convolution2D(64, 3, strides=2, activation='relu', name="conv2d_7")(x)
     x = Dropout(drop)(x)
     x = Convolution2D(64, 1, strides=2, activation='relu', name="latent")(x)
-    
+
     y = Conv2DTranspose(filters=64, kernel_size=3, strides=2,
                         name="deconv2d_1")(x)
     y = Conv2DTranspose(filters=64, kernel_size=3, strides=2,
@@ -1100,7 +1108,7 @@ def default_latent(num_outputs, input_shape):
     y = Conv2DTranspose(filters=32, kernel_size=3, strides=2,
                         name="deconv2d_5")(y)
     y = Conv2DTranspose(filters=1, kernel_size=3, strides=2, name="img_out")(y)
-    
+
     x = Flatten(name='flattened')(x)
     x = Dense(256, activation='relu')(x)
     x = Dropout(drop)(x)
@@ -1111,7 +1119,8 @@ def default_latent(num_outputs, input_shape):
 
     outputs = [y]
     for i in range(num_outputs):
-        outputs.append(Dense(1, activation='linear', name='n_outputs' + str(i))(x))
-        
+        outputs.append(Dense(1, activation='linear',
+                       name='n_outputs' + str(i))(x))
+
     model = Model(inputs=[img_in], outputs=outputs, name='latent')
     return model
